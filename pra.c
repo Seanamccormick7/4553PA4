@@ -10,6 +10,8 @@ static int frame_page[MAX_FRAMES];
 static int pending_frame; // holds the chosen frame until pra_used can get its data
 static char algorithm[4];
 static int last_used[MAX_FRAMES];
+static int *ref_pages;
+static int ref_count;
 
 
 // setup page replacement (in case we need to implement LRU used but for now I will just implement FIFO - Adriel)
@@ -17,8 +19,8 @@ void pra_init(int frames, char *alg, int*pages, int count) {
     int i;
 
     (void)alg;
-    (void)pages;
-    (void)count;
+    ref_pages = pages;
+    ref_count = count;
 
     total_frames = frames;
     next_free_frame = 0;
@@ -40,6 +42,9 @@ void pra_init(int frames, char *alg, int*pages, int count) {
 int pra_get_frame(int pos, int *evicted_page) {
     int frame;
     int i;
+    int j;
+    int next;
+    int farthest;
 
     // check if there is a frame free
     if (next_free_frame < total_frames) {
@@ -68,6 +73,26 @@ int pra_get_frame(int pos, int *evicted_page) {
         *evicted_page = frame_page[frame];
 
         fifo_spot = (fifo_spot + 1) % total_frames;
+    }
+
+    else {
+        frame = 0;
+        farthest = -1;
+
+        for (i = 0; i < total_frames; i++) {
+            next = ref_count;
+            for (j = pos + 1; j < ref_count; j++) {
+                if (ref_pages[j] == frame_page[i]) {
+                    next = j;
+                    break;
+                }
+            }
+            if (next > farthest) {
+                farthest = next;
+                frame = i;
+            }
+        }
+        *evicted_page = frame_page[frame];
     }
 
     pending_frame = frame;
